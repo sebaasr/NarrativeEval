@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCF Narrative Evaluations</title>
+
+<!-- Quill rich text editor (replaces unreliable document.execCommand) -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+<!-- Supabase client (only used when backend is configured) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #333; }
+
+/* ── Login Screen ── */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+.login-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  text-align: center;
+}
+.login-logo { height: 52px; margin-bottom: 20px; }
+.login-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+.login-subtitle { font-size: 14px; color: #888; margin-bottom: 28px; }
+.login-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 20px; border: 2px solid #e0e0e0; border-radius: 8px;
+  background: white; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 12px; color: #333;
+}
+.login-btn:hover { border-color: #4a6cf7; background: #f0f4ff; }
+.login-btn-primary { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+.login-btn-primary:hover { background: #3a5ae0; border-color: #3a5ae0; }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: #bbb; font-size: 13px; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #e0e0e0; }
+.login-input {
+  width: 100%; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+  font-size: 14px; margin-bottom: 10px; outline: none; transition: border-color 0.2s;
+}
+.login-input:focus { border-color: #4a6cf7; }
+.demo-notice {
+  background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px;
+  padding: 12px; font-size: 12px; color: #795548; margin-top: 16px; text-align: left;
+}
+.demo-notice strong { display: block; margin-bottom: 4px; }
+.demo-select {
+  width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 6px;
+  font-size: 14px; margin-bottom: 14px; cursor: pointer; background: white;
+}
+.setup-notice {
+  background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px;
+  margin: 16px; border-radius: 4px; font-size: 13px;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white; padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.topbar-logo { display: flex; align-items: center; gap: 14px; }
+.topbar-logo img { height: 40px; width: auto; }
+.logo-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.3); }
+.logo-text { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; }
+.topbar-center { flex: 1; max-width: 400px; margin: 0 24px; position: relative; }
+.search-input {
+  width: 100%; padding: 8px 14px 8px 36px; border: none; border-radius: 6px;
+  font-size: 14px; background: rgba(255,255,255,0.15); color: white; outline: none; transition: background 0.2s;
+}
+.search-input::placeholder { color: rgba(255,255,255,0.5); }
+.search-input:focus { background: rgba(255,255,255,0.25); }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.5; font-size: 14px; }
+.search-results {
+  position: absolute; top: 100%; left: 0; right: 0; background: white;
+  border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-height: 300px; overflow-y: auto; display: none; z-index: 200;
+}
+.search-results.active { display: block; }
+.search-result-item { padding: 10px 14px; cursor: pointer; color: #333; border-bottom: 1px solid #eee; font-size: 13px; }
+.search-result-item:hover { background: #f0f4ff; }
+.sr-name { font-weight: 600; }
+.sr-nnum, .sr-course { font-size: 12px; color: #888; }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+
+/* Save status indicator */
+.save-status { font-size: 12px; opacity: 0.85; white-space: nowrap; min-width: 120px; text-align: right; }
+.save-status.saving { color: #ffd54f; }
+.save-status.saved { color: #a5d6a7; }
+.save-status.unsaved { color: #ef9a9a; }
+.save-status.error { color: #ef5350; }
+
+.current-user-info { font-size: 13px; opacity: 0.9; text-align: right; }
+.current-user-name { font-weight: 600; }
+.current-user-role { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+.logout-btn {
+  padding: 5px 12px; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  background: rgba(255,255,255,0.1); color: white; font-size: 12px; cursor: pointer;
+  transition: background 0.2s;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ── Layout ── */
+.app-layout { display: flex; min-height: calc(100vh - 56px); }
+
+/* ── Sidebar ── */
+.sidebar { width: 280px; background: white; border-right: 1px solid #e0e0e0; overflow-y: auto; flex-shrink: 0; }
+.sidebar-header {
+  padding: 14px 16px; font-size: 14px; font-weight: 600; color: #555;
+  text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #eee;
+  background: #fafafa; display: flex; align-items: center; gap: 10px;
+}
+.sidebar-header img { height: 24px; width: auto; }
+.sidebar-item {
+  padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s; font-size: 14px;
+}
+.sidebar-item:hover { background: #f0f4ff; }
+.sidebar-item.active { background: #e8efff; border-left: 3px solid #4a6cf7; }
+.si-title { font-weight: 600; color: #333; }
+.si-subtitle { font-size: 12px; color: #888; margin-top: 2px; }
+.si-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-top: 4px; }
+.badge-pending { background: #fff3cd; color: #856404; }
+.badge-complete { background: #d4edda; color: #155724; }
+.badge-partial { background: #e2e3f1; color: #383d6e; }
+.sidebar-section-label {
+  padding: 8px 16px 4px; font-size: 10px; font-weight: 700; color: #aaa;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* ── Main Content ── */
+.main-content { flex: 1; padding: 24px; overflow-y: auto; }
+
+/* ── Cards ── */
+.card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+.card-header {
+  padding: 16px 20px; border-bottom: 1px solid #eee; font-weight: 600; font-size: 15px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-body { padding: 20px; }
+
+/* ── Eval Form ── */
+.eval-header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px; }
+.eval-field { display: flex; flex-direction: column; gap: 4px; }
+.eval-field label { font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+.field-value { font-size: 14px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0; }
+.designation-select {
+  padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px;
+  font-size: 14px; cursor: pointer; background: white; outline: none; transition: border-color 0.2s;
+}
+.designation-select:focus { border-color: #4a6cf7; }
+.designation-select:disabled { background: #f8f9fa; cursor: default; }
+
+/* ── Quill overrides ── */
+.ql-container { font-size: 14px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+.ql-editor { min-height: 160px; line-height: 1.6; }
+.ql-editor.ql-blank::before { color: #aaa; font-style: italic; }
+.ql-toolbar.ql-snow { background: #f8f9fa; border-color: #e0e0e0; }
+.ql-container.ql-snow { border-color: #e0e0e0; }
+.rte-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; margin-top: 6px; }
+.rte-wrapper .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e0e0e0; border-radius: 0; }
+.rte-wrapper .ql-container.ql-snow { border: none; }
+.rte-wrapper.readonly .ql-editor { background: #f8f9fa; cursor: default; }
+.rte-label { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 2px; }
+.rte-label.private-label { color: #c0392b; }
+.private-notice { font-size: 12px; color: #c0392b; font-style: italic; margin-bottom: 4px; }
+.public-notice { font-size: 12px; color: #27ae60; font-style: italic; margin-bottom: 4px; }
+
+/* ── Amendment banner ── */
+.amendment-banner {
+  background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px;
+  padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center;
+  gap: 12px; font-size: 13px; color: #795548;
+}
+.amendment-banner strong { color: #5d4037; }
+
+/* ── Submitted lock notice ── */
+.lock-notice {
+  background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px;
+  padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #2e7d32;
+}
+
+/* ── Course description ── */
+.course-desc-box {
+  background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.5;
+  color: #555; max-height: 120px; overflow-y: auto;
+}
+
+/* ── Buttons ── */
+.btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #4a6cf7; color: white; }
+.btn-primary:hover { background: #3a5ae0; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-secondary:hover { background: #5a6268; }
+.btn-success { background: #28a745; color: white; }
+.btn-success:hover { background: #218838; }
+.btn-warning { background: #ffc107; color: #333; }
+.btn-warning:hover { background: #e0a800; }
+.btn-outline { background: transparent; border: 2px solid #4a6cf7; color: #4a6cf7; }
+.btn-outline:hover { background: #4a6cf7; color: white; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-group { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ── Student List Table ── */
+.student-table { width: 100%; border-collapse: collapse; }
+.student-table th {
+  text-align: left; padding: 10px 14px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.3px; color: #666; background: #f8f9fa; border-bottom: 2px solid #e0e0e0;
+}
+.student-table td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+.student-table tr:hover td { background: #f8faff; }
+.clickable { cursor: pointer; color: #4a6cf7; font-weight: 600; }
+.clickable:hover { text-decoration: underline; }
+
+/* ── Status & designation badges ── */
+.status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.status-draft { background: #fff3cd; color: #856404; }
+.status-submitted { background: #d4edda; color: #155724; }
+.status-not-started { background: #f0f0f0; color: #888; }
+.desig-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.desig-satplus { background: #d4edda; color: #155724; }
+.desig-sat { background: #cce5ff; color: #004085; }
+.desig-satminus { background: #fff3cd; color: #856404; }
+.desig-unsat { background: #f8d7da; color: #721c24; }
+.desig-inc { background: #e2e3e5; color: #383d41; }
+.desig-pass { background: #d1ecf1; color: #0c5460; }
+.desig-fnc { background: #f8d7da; color: #721c24; }
+
+/* ── Registrar view ── */
+.filter-bar {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end;
+}
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; }
+.filter-select {
+  padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px;
+  font-size: 13px; background: white; cursor: pointer;
+}
+.stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-card {
+  flex: 1; min-width: 140px; background: white; border-radius: 8px;
+  padding: 14px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center;
+}
+.stat-number { font-size: 28px; font-weight: 700; color: #4a6cf7; }
+.stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+
+/* ── Welcome / empty state ── */
+.welcome { text-align: center; padding: 60px 20px; color: #888; }
+.welcome h2 { font-size: 22px; color: #555; margin-bottom: 10px; }
+.welcome p { font-size: 15px; }
+
+/* ── Loading ── */
+.loading { text-align: center; padding: 40px; color: #888; }
+.spinner {
+  width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #4a6cf7;
+  border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 30px; right: 30px; padding: 12px 24px;
+  border-radius: 8px; font-size: 14px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(100px);
+  opacity: 0; transition: all 0.3s; z-index: 300; color: white; background: #28a745;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── Access log ── */
+.log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.log-table th { background: #f8f9fa; padding: 8px 12px; text-align: left; color: #666; border-bottom: 1px solid #e0e0e0; }
+.log-table td { padding: 7px 12px; border-bottom: 1px solid #f5f5f5; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .topbar-center { max-width: 100%; margin: 8px 0 0 0; order: 3; flex-basis: 100%; }
+  .app-layout { flex-direction: column; }
+  .sidebar { width: 100%; max-height: 250px; }
+  .eval-header-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Print ── */
+@media print {
+  .topbar, .sidebar, .btn-group, .ql-toolbar, .private-notice, .public-notice,
+  .amendment-banner, .filter-bar { display: none !important; }
+  .main-content { padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+  .ql-editor { border: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN (shown when not authenticated)
+═══════════════════════════════════════════════════════════ -->
+<div id="loginScreen" class="login-screen" style="display:none;">
+  <div class="login-card">
+    <img src="NCF Logo Horiz BLACK copy.jpg" alt="New College of Florida" class="login-logo">
+    <div class="login-title">Narrative Evaluations</div>
+    <div class="login-subtitle">Sign in with your NCF credentials</div>
+
+    <!-- PRODUCTION: Google SSO button (shown when Supabase is configured) -->
+    <div id="loginProd" style="display:none;">
+      <button class="login-btn login-btn-primary" onclick="Auth.signInWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#fff" d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z"/><path fill="#fff" d="M17.64 9.2c0-.74-.06-1.28-.19-1.84H9v3.34h4.96c-.1.83-.64 2.08-1.84 2.92l2.84 2.2c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#fff" d="M3.88 10.78A5.54 5.54 0 0 1 3.58 9c0-.62.11-1.22.29-1.78L.96 4.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z"/><path fill="#fff" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.84-2.2c-.76.53-1.78.9-3.12.9-2.38 0-4.4-1.57-5.12-3.74L.97 13.04C2.45 15.98 5.48 18 9 18z"/></svg>
+        Sign in with Google (NCF)
+      </button>
+      <div class="login-divider">or</div>
+      <input type="email" class="login-input" id="emailInput" placeholder="your@ncf.edu" autocomplete="email">
+      <input type="password" class="login-input" id="passwordInput" placeholder="Password" autocomplete="current-password">
+      <button class="login-btn login-btn-primary" onclick="Auth.signInWithEmail()" style="margin-top:4px;">Sign In with Email</button>
+      <div id="loginError" style="color:#e53935;font-size:13px;margin-top:8px;display:none;"></div>
+    </div>
+
+    <!-- DEMO: role selector (shown when Supabase is NOT configured) -->
+    <div id="loginDemo" style="display:none;">
+      <div class="demo-notice">
+        <strong>Demo Mode</strong>
+        Data is stored locally in this browser. Configure Supabase in the config section to enable the production backend.
+      </div>
+      <div style="height:16px;"></div>
+      <select class="demo-select" id="demoUserSelect"></select>
+      <button class="login-btn login-btn-primary" onclick="Auth.signInDemo()">Enter as Selected User</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP (shown when authenticated)
+═══════════════════════════════════════════════════════════ -->
+<div id="appScreen" style="display:none;">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <img src="NCF Logo Horiz BLACK REV copy.png" alt="New College of Florida">
+        <div class="logo-divider"></div>
+        <span class="logo-text">Narrative Evaluations</span>
+      </div>
+    </div>
+    <div class="topbar-center">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by student name or N-number..." autocomplete="off">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="topbar-right">
+      <div id="saveStatus" class="save-status"></div>
+      <div class="current-user-info">
+        <div class="current-user-name" id="currentUserName"></div>
+        <div class="current-user-role" id="currentUserRole"></div>
+      </div>
+      <button class="logout-btn" onclick="Auth.signOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- App Layout -->
+  <div class="app-layout">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="main-content" id="mainContent">
+      <div class="welcome">
+        <h2>Welcome to Narrative Evaluations</h2>
+        <p>Select an item from the sidebar to begin.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 1: CONFIGURATION
+// Replace SUPABASE_URL and SUPABASE_ANON_KEY with your project values.
+// Set DEMO_MODE to false once Supabase is configured.
+// ═══════════════════════════════════════════════════════════════════
+
+const CONFIG = {
+  supabaseUrl:     'YOUR_SUPABASE_PROJECT_URL',    // e.g. https://abcxyz.supabase.co
+  supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',       // from Supabase Dashboard > Settings > API
+  autoSaveDelay:   3000,   // ms after last keystroke before auto-saving
+  demoMode:        true,   // set to false once Supabase is configured
+};
+
+const USE_DEMO = CONFIG.demoMode || CONFIG.supabaseUrl.includes('YOUR_');
+let _supabase = null;
+if (!USE_DEMO) {
+  _supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 2: DEMO DATA
+// ═══════════════════════════════════════════════════════════════════
+
+const DEMO_INITIAL = {
+  profiles: [
+    { id: 'f1', email: 'msantos@ncf.edu',   full_name: 'Dr. Maria Santos',    role: 'faculty',    is_advisor: true,  division: 'Social Sciences' },
+    { id: 'f2', email: 'jchen@ncf.edu',     full_name: 'Dr. James Chen',      role: 'faculty',    is_advisor: true,  division: 'Natural Sciences' },
+    { id: 'f3', email: 'evasquez@ncf.edu',  full_name: 'Dr. Elena Vasquez',   role: 'faculty',    is_advisor: true,  division: 'Humanities' },
+    { id: 'f4', email: 'rkim@ncf.edu',      full_name: 'Prof. Robert Kim',    role: 'faculty',    is_advisor: false, division: 'Natural Sciences' },
+    { id: 'r1', email: 'registrar@ncf.edu', full_name: 'Sarah Johnson',       role: 'registrar',  is_advisor: false, division: "Registrar's Office" },
+    { id: 'po', email: 'provost@ncf.edu',   full_name: 'Dr. Helen Crawford',  role: 'po_office',  is_advisor: false, division: "Provost's Office" },
+    { id: 'ad', email: 'admin@ncf.edu',     full_name: 'Admin User',          role: 'admin',      is_advisor: false, division: 'Academic Affairs' },
+    // Student logins — role 'student', linked to their record via student_id.
+    { id: 'u_s1', email: 'arivera@ncf.edu', full_name: 'Alex Rivera',         role: 'student',    is_advisor: false, division: 'Social Sciences',  student_id: 's1' },
+    { id: 'u_s2', email: 'jlee@ncf.edu',    full_name: 'Jordan Lee',          role: 'student',    is_advisor: false, division: 'Natural Sciences', student_id: 's2' },
+  ],
+  courses: [
+    { id: 'c1', code: 'SOC 301', name: 'Social Theory and Practice',       semester: 'Spring', year: 2026, faculty_id: 'f1', division: 'Social Sciences',  description: 'This course explores the major theoretical frameworks in sociology from the classical period to the present. Students engage with the works of Marx, Weber, Durkheim, and contemporary theorists, applying these frameworks to analyze current social phenomena. Assignments include weekly reading responses, two analytical essays, a group presentation, and a final research paper.' },
+    { id: 'c2', code: 'BIO 215', name: 'Ecology and Conservation Biology', semester: 'Spring', year: 2026, faculty_id: 'f2', division: 'Natural Sciences', description: 'An introduction to ecological principles and their application to conservation challenges. Topics include population dynamics, community ecology, biodiversity, and conservation strategies. Includes lab reports, field work at Sarasota Bay, a midterm, a species conservation proposal, and a final exam.' },
+    { id: 'c3', code: 'HUM 410', name: 'Advanced Topics in Literary Criticism', semester: 'Spring', year: 2026, faculty_id: 'f3', division: 'Humanities',      description: 'A seminar examining contemporary approaches to literary criticism: postcolonial theory, queer theory, ecocriticism, and digital humanities. Students lead discussions, write critical responses, and produce a 20–25 page final essay demonstrating mastery of at least two theoretical approaches.' },
+    { id: 'c4', code: 'CHM 201', name: 'Organic Chemistry I',              semester: 'Spring', year: 2026, faculty_id: 'f4', division: 'Natural Sciences', description: 'First semester covering fundamentals of organic chemistry: molecular structure, stereochemistry, reaction mechanisms, and functional group chemistry. Assessment: weekly problem sets, three exams, a cumulative final, and a lab component.' },
+    { id: 'c5', code: 'PSY 250', name: 'Research Methods in Psychology',   semester: 'Spring', year: 2026, faculty_id: 'f1', division: 'Social Sciences',  description: 'Comprehensive introduction to research methodology in psychology. Students learn experimental design, survey construction, qualitative methods, and statistical analysis. Culminates in a group research project. Additional requirements: literature review, ethics certification, and a methods critique paper.' },
+    // ── Prior semester (Fall 2025) — used to demonstrate the multi-semester student view ──
+    { id: 'c6', code: 'SOC 201', name: 'Foundations of Sociology',        semester: 'Fall',   year: 2025, faculty_id: 'f1', division: 'Social Sciences',  description: 'A first survey of sociological thinking: socialization, culture, deviance, institutions, and social change. Students complete weekly reading responses, two short papers, and a final reflective essay connecting course concepts to their own social world.' },
+    { id: 'c7', code: 'HUM 150', name: 'Introduction to Literary Studies', semester: 'Fall',  year: 2025, faculty_id: 'f3', division: 'Humanities',      description: 'An introduction to close reading and literary analysis across poetry, fiction, and drama. Students develop critical vocabulary, write three analytical essays, and lead one seminar discussion.' },
+  ],
+  students: [
+    { id: 's1',  n_number: 'N00412356', full_name: 'Alex Rivera',      advisor_id: 'f1', year_level: 'Third Year',  enrollments: ['c1','c3','c6','c7'] },
+    { id: 's2',  n_number: 'N00418723', full_name: 'Jordan Lee',       advisor_id: 'f2', year_level: 'Second Year', enrollments: ['c1','c2'] },
+    { id: 's3',  n_number: 'N00425891', full_name: 'Samira Patel',     advisor_id: 'f1', year_level: 'Fourth Year', enrollments: ['c1','c3','c5'] },
+    { id: 's4',  n_number: 'N00431044', full_name: 'Marcus Thompson',  advisor_id: 'f3', year_level: 'First Year',  enrollments: ['c2','c4'] },
+    { id: 's5',  n_number: 'N00437612', full_name: 'Emily Nguyen',     advisor_id: 'f2', year_level: 'Third Year',  enrollments: ['c2','c5'] },
+    { id: 's6',  n_number: 'N00442087', full_name: 'Diego Morales',    advisor_id: 'f1', year_level: 'Second Year', enrollments: ['c3','c4'] },
+    { id: 's7',  n_number: 'N00449951', full_name: 'Chloe Banks',      advisor_id: 'f3', year_level: 'Fourth Year', enrollments: ['c1','c5'] },
+    { id: 's8',  n_number: 'N00451234', full_name: 'Kenji Watanabe',   advisor_id: 'f2', year_level: 'Third Year',  enrollments: ['c2','c4'] },
+    { id: 's9',  n_number: 'N00456789', full_name: 'Isabella Ruiz',    advisor_id: 'f1', year_level: 'First Year',  enrollments: ['c1','c2','c4'] },
+    { id: 's10', n_number: 'N00461023', full_name: "Liam O'Brien",     advisor_id: 'f3', year_level: 'Second Year', enrollments: ['c3','c5'] },
+    { id: 's11', n_number: 'N00467890', full_name: 'Ava Washington',   advisor_id: 'f2', year_level: 'Fourth Year', enrollments: ['c1','c3'] },
+    { id: 's12', n_number: 'N00473456', full_name: 'Noah Fischer',     advisor_id: 'f1', year_level: 'Third Year',  enrollments: ['c2','c5'] },
+    { id: 's13', n_number: 'N00478912', full_name: 'Mia Johansson',    advisor_id: 'f3', year_level: 'Second Year', enrollments: ['c4','c5'] },
+    { id: 's14', n_number: 'N00484567', full_name: 'Ethan Park',       advisor_id: 'f2', year_level: 'First Year',  enrollments: ['c1','c2'] },
+    { id: 's15', n_number: 'N00490123', full_name: 'Sofia Martinez',   advisor_id: 'f1', year_level: 'Fourth Year', enrollments: ['c3','c5'] },
+    { id: 's16', n_number: 'N00495678', full_name: 'Lucas Brown',      advisor_id: 'f3', year_level: 'Third Year',  enrollments: ['c2','c4'] },
+  ],
+  evaluations: [
+    { id: 'e1', student_id: 's1', course_id: 'c1', faculty_id: 'f1', designation: 'sat_plus',
+      public_narrative: '<p>Alex demonstrated exceptional engagement with the course material throughout the semester. Their weekly reading responses were consistently thoughtful and well-argued, often drawing connections between theorists that other students missed. The final research paper on <strong>the application of Bourdieu\'s concept of cultural capital to educational inequality in Florida</strong> was one of the strongest I have received in this course.</p><p>Alex was an active and generous participant in seminar discussions, frequently helping to clarify complex concepts for peers while remaining open to alternative interpretations.</p>',
+      status: 'submitted', submitted_at: '2026-04-01T10:30:00', updated_at: '2026-04-01T10:30:00' },
+    { id: 'e2', student_id: 's2', course_id: 'c1', faculty_id: 'f1', designation: 'sat',
+      public_narrative: '<p>Jordan performed well in Social Theory and Practice. Their reading responses showed a solid understanding of the key theoretical frameworks, and their analytical essays demonstrated an ability to apply these frameworks to contemporary issues.</p><p>The final research paper was well-organized and clearly written, though it could have engaged more deeply with counter-arguments to the thesis. Jordan contributed regularly to class discussion.</p>',
+      status: 'submitted', submitted_at: '2026-04-01T11:00:00', updated_at: '2026-04-01T11:00:00' },
+    { id: 'e3', student_id: 's4', course_id: 'c2', faculty_id: 'f2', designation: 'sat_minus',
+      public_narrative: '<p>Marcus completed the basic requirements of the course but struggled with some of the more complex ecological concepts, particularly population modeling and community dynamics. Lab reports were generally adequate but sometimes lacked sufficient analysis of field data.</p><p>Marcus showed improvement in the second half of the semester, and the conservation proposal demonstrated genuine interest in marine ecology. I encourage Marcus to continue developing quantitative skills.</p>',
+      status: 'draft', submitted_at: null, updated_at: '2026-04-02T14:00:00' },
+    // ── Fall 2025 submitted evaluations for Alex Rivera (s1) — populate the student view's prior semester ──
+    { id: 'e4', student_id: 's1', course_id: 'c6', faculty_id: 'f1', designation: 'sat_plus',
+      public_narrative: '<p>Alex entered Foundations of Sociology already curious and left it visibly more rigorous. Their short papers moved from summary toward genuine analysis, and the final reflective essay — connecting Goffman\'s dramaturgy to their own experience in campus life — was a standout. Alex reads carefully and is unafraid to revise a first impression when the evidence pushes back.</p><p>A reliable, generous contributor in discussion. I would happily teach Alex again in an upper-division seminar.</p>',
+      status: 'submitted', submitted_at: '2025-12-15T09:20:00', updated_at: '2025-12-15T09:20:00' },
+    { id: 'e5', student_id: 's1', course_id: 'c7', faculty_id: 'f3', designation: 'sat',
+      public_narrative: '<p>Alex made solid progress in Introduction to Literary Studies. Close-reading skills developed steadily over the term; the second analytical essay, on imagery in Elizabeth Bishop, was clearly argued and textually grounded. Seminar leadership was well prepared.</p><p>To continue growing, Alex should push past sound interpretation toward a sharper, more contestable thesis — taking a position that a thoughtful reader might resist. The ability is plainly there.</p>',
+      status: 'submitted', submitted_at: '2025-12-16T13:45:00', updated_at: '2025-12-16T13:45:00' },
+  ],
+  // Private notes stored separately — faculty + registrar/admin only
+  privateNotes: {
+    'e1': '<p>Alex is a strong candidate for graduate school in sociology. I would recommend they consider programs with strengths in social stratification. They should discuss this with their advisor.</p>',
+    'e2': '<p>Jordan might benefit from a writing workshop to strengthen argumentative writing. Overall a solid student who is developing well.</p>',
+    'e3': '<p>Marcus should consider tutoring or study groups for quantitative courses. He has enthusiasm but needs to build a stronger foundation in analytical methods. Not yet ready for upper-level ecology seminars.</p>',
+    'e4': '<p>Strong graduate-school potential. Encourage Alex to apply for the summer research fellowship and to start building a relationship with a thesis sponsor early.</p>',
+    'e5': '<p>Privately: Alex hedges in writing when anxious about being wrong. Worth a direct conversation — the confidence is warranted.</p>',
+  },
+  accessLog: []
+};
+
+function demoLoadData() {
+  const saved = localStorage.getItem('ncf_eval_v3');
+  if (saved) return JSON.parse(saved);
+  const fresh = JSON.parse(JSON.stringify(DEMO_INITIAL));
+  localStorage.setItem('ncf_eval_v3', JSON.stringify(fresh));
+  return fresh;
+}
+function demoSaveData(d) { localStorage.setItem('ncf_eval_v3', JSON.stringify(d)); }
+
+let demoData = demoLoadData();
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 3: DATA LAYER ABSTRACTION
+// All async. Returns consistent shapes regardless of backend.
+// ═══════════════════════════════════════════════════════════════════
+
+const Data = {
+
+  // ── Courses ──────────────────────────────────────────────────────
+
+  async getMyCourses(userId) {
+    if (USE_DEMO) {
+      return demoData.courses.filter(c => c.faculty_id === userId);
+    }
+    const { data, error } = await _supabase
+      .from('courses')
+      .select('*, faculty:profiles(full_name)')
+      .eq('faculty_id', userId)
+      .eq('is_active', true)
+      .order('year', { ascending: false })
+      .order('semester');
+    if (error) throw error;
+    return data;
+  },
+
+  async getAllCourses(semesterFilter) {
+    if (USE_DEMO) {
+      let courses = demoData.courses;
+      if (semesterFilter) courses = courses.filter(c => `${c.semester} ${c.year}` === semesterFilter);
+      return courses.map(c => ({
+        ...c,
+        faculty: demoData.profiles.find(p => p.id === c.faculty_id)
+      }));
+    }
+    let q = _supabase.from('courses').select('*, faculty:profiles(full_name, division)').eq('is_active', true);
+    if (semesterFilter) {
+      const [term, year] = semesterFilter.split(' ');
+      q = q.eq('semester', term).eq('year', parseInt(year));
+    }
+    const { data, error } = await q.order('code');
+    if (error) throw error;
+    return data;
+  },
+
+  // ── Students ─────────────────────────────────────────────────────
+
+  async getCourseStudents(courseId) {
+    if (USE_DEMO) {
+      return demoData.students
+        .filter(s => s.enrollments.includes(courseId))
+        .map(s => ({
+          ...s,
+          advisor: demoData.profiles.find(p => p.id === s.advisor_id)
+        }));
+    }
+    const { data, error } = await _supabase
+      .from('enrollments')
+      .select('student:students(*, advisor:profiles!students_advisor_id_fkey(full_name))')
+      .eq('course_id', courseId);
+    if (error) throw error;
+    return data.map(r => r.student);
+  },
+
+  async getMyAdvisees(advisorId) {
+    if (USE_DEMO) {
+      return demoData.students.filter(s => s.advisor_id === advisorId);
+    }
+    const { data, error } = await _supabase
+      .from('students')
+      .select('*')
+      .eq('advisor_id', advisorId)
+      .eq('is_active', true)
+      .order('full_name');
+    if (error) throw error;
+    return data;
+  },
+
+  async getAllStudents(semesterFilter) {
+    if (USE_DEMO) {
+      return demoData.students.map(s => ({
+        ...s,
+        advisor: demoData.profiles.find(p => p.id === s.advisor_id)
+      }));
+    }
+    const { data, error } = await _supabase
+      .from('students')
+      .select('*, advisor:profiles!students_advisor_id_fkey(full_name)')
+      .eq('is_active', true)
+      .order('full_name');
+    if (error) throw error;
+    return data;
+  },
+
+  // ── Evaluations ──────────────────────────────────────────────────
+
+  async getEvaluation(studentId, courseId) {
+    if (USE_DEMO) {
+      return demoData.evaluations.find(e => e.student_id === studentId && e.course_id === courseId) || null;
+    }
+    const { data, error } = await _supabase
+      .from('evaluations')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async getPrivateNote(evalId) {
+    if (USE_DEMO) {
+      return demoData.privateNotes[evalId] || '';
+    }
+    const { data, error } = await _supabase
+      .from('evaluation_private_notes')
+      .select('content')
+      .eq('evaluation_id', evalId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.content || '';
+  },
+
+  async saveEvaluation(studentId, courseId, evalData, facultyId) {
+    if (USE_DEMO) {
+      const idx = demoData.evaluations.findIndex(e => e.student_id === studentId && e.course_id === courseId);
+      const now = new Date().toISOString();
+      const evalObj = {
+        id: idx >= 0 ? demoData.evaluations[idx].id : 'e_' + Date.now(),
+        student_id: studentId,
+        course_id: courseId,
+        faculty_id: facultyId || appState.currentUser?.id,
+        designation: evalData.designation,
+        public_narrative: evalData.publicNarrative,
+        status: evalData.status,
+        submitted_at: evalData.status === 'submitted' ? (idx >= 0 && demoData.evaluations[idx].submitted_at ? demoData.evaluations[idx].submitted_at : now) : null,
+        updated_at: now,
+      };
+      if (idx >= 0) demoData.evaluations[idx] = evalObj;
+      else demoData.evaluations.push(evalObj);
+      if (evalData.privateNarrative !== undefined) {
+        demoData.privateNotes[evalObj.id] = evalData.privateNarrative;
+      }
+      demoSaveData(demoData);
+      return evalObj;
+    }
+    // Supabase: upsert evaluation
+    const evalObj = {
+      student_id: studentId,
+      course_id: courseId,
+      faculty_id: facultyId || appState.currentUser?.id,
+      designation: evalData.designation,
+      public_narrative: evalData.publicNarrative,
+      status: evalData.status,
+      submitted_at: evalData.status === 'submitted' ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await _supabase
+      .from('evaluations')
+      .upsert(evalObj, { onConflict: 'student_id,course_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    // Save private note
+    if (evalData.privateNarrative !== undefined) {
+      await _supabase.from('evaluation_private_notes')
+        .upsert({ evaluation_id: data.id, content: evalData.privateNarrative, updated_at: new Date().toISOString() },
+                 { onConflict: 'evaluation_id' });
+    }
+    return data;
+  },
+
+  async getAllEvaluations(semesterFilter, statusFilter) {
+    if (USE_DEMO) {
+      let evals = demoData.evaluations;
+      if (statusFilter && statusFilter !== 'all') evals = evals.filter(e => e.status === statusFilter);
+      return evals.map(e => ({
+        ...e,
+        student: demoData.students.find(s => s.id === e.student_id),
+        course: demoData.courses.find(c => c.id === e.course_id),
+        faculty: demoData.profiles.find(p => p.id === e.faculty_id),
+        privateNote: demoData.privateNotes[e.id] || '',
+      }));
+    }
+    let q = _supabase.from('evaluations').select(`
+      *,
+      student:students(full_name, n_number, year_level),
+      course:courses(code, name, semester, year),
+      faculty:profiles(full_name),
+      private_note:evaluation_private_notes(content)
+    `);
+    if (statusFilter && statusFilter !== 'all') q = q.eq('status', statusFilter);
+    const { data, error } = await q.order('updated_at', { ascending: false });
+    if (error) throw error;
+    if (semesterFilter) return data.filter(e => `${e.course?.semester} ${e.course?.year}` === semesterFilter);
+    return data;
+  },
+
+  // ── Student self-service ─────────────────────────────────────────
+  // Returns every course the student is/was enrolled in (all semesters),
+  // each paired with its faculty and — only if SUBMITTED — its evaluation.
+  // Private notes are never fetched here. RLS enforces the same on the server.
+  async getStudentCoursesWithEvals(studentId) {
+    if (USE_DEMO) {
+      const student = demoData.students.find(s => s.id === studentId);
+      if (!student) return [];
+      return (student.enrollments || [])
+        .map(cid => {
+          const course  = demoData.courses.find(c => c.id === cid);
+          const faculty = demoData.profiles.find(p => p.id === course?.faculty_id);
+          const ev      = demoData.evaluations.find(e => e.student_id === studentId && e.course_id === cid);
+          return { course, faculty, ev: (ev && ev.status === 'submitted') ? ev : null };
+        })
+        .filter(x => x.course);
+    }
+    const { data: enr, error } = await _supabase
+      .from('enrollments')
+      .select('course:courses(*, faculty:profiles(full_name))')
+      .eq('student_id', studentId);
+    if (error) throw error;
+    const { data: evals, error: evErr } = await _supabase
+      .from('evaluations')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('status', 'submitted');
+    if (evErr) throw evErr;
+    return (enr || [])
+      .filter(r => r.course)
+      .map(r => ({
+        course:  r.course,
+        faculty: r.course.faculty,
+        ev:      (evals || []).find(e => e.course_id === r.course.id) || null,
+      }));
+  },
+
+  async logAccess(action, resourceType, resourceId, studentId) {
+    if (USE_DEMO) {
+      demoData.accessLog.push({ user_id: appState.currentUser?.id, student_id: studentId, action, resource_type: resourceType, resource_id: resourceId, created_at: new Date().toISOString() });
+      demoSaveData(demoData);
+      return;
+    }
+    // Fire-and-forget; don't await
+    _supabase.from('access_log').insert({
+      user_id: appState.currentUser?.id,
+      student_id: studentId,
+      action, resource_type: resourceType, resource_id: resourceId
+    });
+  },
+
+  async getAccessLog(studentId) {
+    if (USE_DEMO) {
+      const log = studentId
+        ? demoData.accessLog.filter(l => l.student_id === studentId)
+        : demoData.accessLog;
+      return log.slice(-100).reverse();
+    }
+    let q = _supabase.from('access_log').select('*, user:profiles(full_name), student:students(full_name, n_number)').order('created_at', { ascending: false }).limit(200);
+    if (studentId) q = q.eq('student_id', studentId);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  },
+};
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 4: AUTHENTICATION
+// ═══════════════════════════════════════════════════════════════════
+
+const Auth = {
+  async init() {
+    if (USE_DEMO) {
+      // Demo: check localStorage for saved session
+      const savedId = localStorage.getItem('ncf_demo_user');
+      if (savedId) {
+        const profile = demoData.profiles.find(p => p.id === savedId);
+        if (profile) { appState.currentUser = profile; showApp(); return; }
+      }
+      showLogin();
+      return;
+    }
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session) {
+      await Auth._loadProfile(session.user);
+      showApp();
+    } else {
+      showLogin();
+    }
+    _supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await Auth._loadProfile(session.user);
+        showApp();
+      } else if (event === 'SIGNED_OUT') {
+        appState.currentUser = null;
+        showLogin();
+      }
+    });
+  },
+
+  async _loadProfile(user) {
+    const { data, error } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
+    if (error || !data) {
+      // First login: create profile with default faculty role
+      const { data: newProfile } = await _supabase.from('profiles').insert({
+        id: user.id, email: user.email,
+        full_name: user.user_metadata?.full_name || user.email,
+        role: 'faculty', is_advisor: false
+      }).select().single();
+      appState.currentUser = newProfile;
+    } else {
+      appState.currentUser = data;
+    }
+  },
+
+  async signInWithGoogle() {
+    const { error } = await _supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.href }
+    });
+    if (error) showLoginError(error.message);
+  },
+
+  async signInWithEmail() {
+    const email = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    if (!email || !password) { showLoginError('Please enter email and password.'); return; }
+    const { error } = await _supabase.auth.signInWithPassword({ email, password });
+    if (error) showLoginError(error.message);
+  },
+
+  signInDemo() {
+    const sel = document.getElementById('demoUserSelect');
+    const profile = demoData.profiles.find(p => p.id === sel.value);
+    if (!profile) return;
+    localStorage.setItem('ncf_demo_user', profile.id);
+    appState.currentUser = profile;
+    showApp();
+  },
+
+  async signOut() {
+    if (USE_DEMO) {
+      localStorage.removeItem('ncf_demo_user');
+      appState.currentUser = null;
+      showLogin();
+      return;
+    }
+    await _supabase.auth.signOut();
+  },
+};
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function showLogin() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+  if (USE_DEMO) {
+    document.getElementById('loginDemo').style.display = 'block';
+    const sel = document.getElementById('demoUserSelect');
+    sel.innerHTML = demoData.profiles.map(p =>
+      `<option value="${p.id}">${p.full_name} — ${roleLabel(p.role)}${p.is_advisor ? ' / advisor' : ''} (${p.division})</option>`
+    ).join('');
+  } else {
+    document.getElementById('loginProd').style.display = 'block';
+  }
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  const u = appState.currentUser;
+  document.getElementById('currentUserName').textContent = u.full_name;
+  document.getElementById('currentUserRole').textContent =
+    roleLabel(u.role) + (u.is_advisor ? ' · Advisor' : '') + (USE_DEMO ? ' (Demo)' : '');
+  // Students don't browse other students — hide the global student search.
+  const searchBox = document.querySelector('.topbar-center');
+  if (searchBox) searchBox.style.display = u.role === 'student' ? 'none' : '';
+  appState.view = 'welcome';
+  appState.selectedCourseId = null;
+  appState.selectedStudentId = null;
+  setupSearch();
+  renderSidebar();
+  renderMain();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 5: APP STATE
+// ═══════════════════════════════════════════════════════════════════
+
+const appState = {
+  currentUser: null,
+  selectedCourseId: null,
+  selectedStudentId: null,
+  view: 'welcome',   // 'welcome' | 'course' | 'evaluation' | 'advisor-student' | 'registrar' | 'access-log'
+  currentEvalId: null,
+  currentEvalStatus: null,
+  isAmending: false,
+};
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 6: AUTO-SAVE
+// ═══════════════════════════════════════════════════════════════════
+
+let _autoSaveTimer = null;
+let _isDirty = false;
+let _publicQuill = null;
+let _privateQuill = null;
+
+function setSaveStatus(state, msg) {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.className = 'save-status ' + state;
+  el.textContent = msg || '';
+}
+
+function markDirty() {
+  if (appState.view !== 'evaluation') return;
+  if (appState.currentEvalStatus === 'submitted' && !appState.isAmending) return;
+  _isDirty = true;
+  setSaveStatus('unsaved', '● Unsaved changes');
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(autoSave, CONFIG.autoSaveDelay);
+}
+
+async function autoSave() {
+  if (!_isDirty || appState.view !== 'evaluation') return;
+  setSaveStatus('saving', 'Saving…');
+  try {
+    await performSave('draft', false);
+    _isDirty = false;
+    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSaveStatus('saved', `✓ Saved ${t}`);
+  } catch(e) {
+    setSaveStatus('error', '✗ Save failed');
+  }
+}
+
+function warnIfDirty() {
+  if (_isDirty) return confirm('You have unsaved changes. Leave without saving?');
+  return true;
+}
+
+function destroyEditors() {
+  _publicQuill = null;
+  _privateQuill = null;
+  clearTimeout(_autoSaveTimer);
+  _isDirty = false;
+  setSaveStatus('', '');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 7: SIDEBAR
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderSidebar() {
+  const sb = document.getElementById('sidebar');
+  const u = appState.currentUser;
+  if (!u) return;
+
+  const canViewAll = u.role === 'registrar' || u.role === 'admin' || u.role === 'po_office';
+
+  let html = '';
+
+  // ── Student: read-only view of their own evaluations, grouped by semester ──
+  if (u.role === 'student') {
+    html += '<div class="sidebar-header"><img src="NCF Shield RGB_no color copy.png" alt="">My Evaluations</div>';
+    try {
+      const items = await Data.getStudentCoursesWithEvals(u.student_id);
+      if (items.length === 0) {
+        html += '<div style="padding:20px;color:#888;font-size:13px;">No course enrollments found.</div>';
+      } else {
+        const groups = {};
+        for (const it of items) {
+          const key = `${it.course.semester} ${it.course.year}`;
+          (groups[key] = groups[key] || []).push(it);
+        }
+        const active = appState.view === 'student-home' ? ' active' : '';
+        for (const k of Object.keys(groups).sort(semesterSortDesc)) {
+          const g = groups[k];
+          const done = g.filter(x => x.ev).length;
+          html += `<div class="sidebar-item${active}" onclick="navToStudentHome()">
+            <div class="si-title">${k}</div>
+            <div class="si-subtitle">${g.length} course${g.length !== 1 ? 's' : ''}</div>
+            <span class="si-badge ${done > 0 ? 'badge-partial' : 'badge-pending'}">${done}/${g.length} available</span>
+          </div>`;
+        }
+      }
+    } catch(e) {
+      html += '<div style="padding:12px;color:#c00;font-size:12px;">Error loading evaluations.</div>';
+    }
+  }
+
+  if (u.role === 'faculty' || u.role === 'admin') {
+    html += '<div class="sidebar-header"><img src="NCF Shield RGB_no color copy.png" alt="">My Courses</div>';
+    try {
+      const courses = await Data.getMyCourses(u.id);
+      if (courses.length === 0) {
+        html += '<div style="padding:20px;color:#888;font-size:13px;">No courses assigned this semester.</div>';
+      } else {
+        for (const c of courses) {
+          const studentsInCourse = USE_DEMO
+            ? demoData.students.filter(s => s.enrollments.includes(c.id))
+            : [];
+          const evalsForCourse = USE_DEMO
+            ? demoData.evaluations.filter(e => e.course_id === c.id)
+            : [];
+          const submitted = evalsForCourse.filter(e => e.status === 'submitted').length;
+          const total = USE_DEMO ? studentsInCourse.length : '?';
+          let badgeClass = 'badge-pending', badgeText = `${submitted}/${total} submitted`;
+          if (submitted === total && total > 0) { badgeClass = 'badge-complete'; badgeText = 'All submitted'; }
+          else if (submitted > 0) badgeClass = 'badge-partial';
+          const active = appState.selectedCourseId === c.id && appState.view === 'course' ? ' active' : '';
+          html += `<div class="sidebar-item${active}" onclick="navToCourse('${c.id}')">
+            <div class="si-title">${c.code}: ${c.name}</div>
+            <div class="si-subtitle">${c.semester} ${c.year}</div>
+            <span class="si-badge ${badgeClass}">${badgeText}</span>
+          </div>`;
+        }
+      }
+    } catch(e) {
+      html += '<div style="padding:12px;color:#c00;font-size:12px;">Error loading courses.</div>';
+    }
+  }
+
+  if (u.is_advisor || u.role === 'admin') {
+    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="NCF Shield RGB_no color copy.png" alt="">My Advisees</div>';
+    try {
+      const advisees = await Data.getMyAdvisees(u.id);
+      if (advisees.length === 0) {
+        html += '<div style="padding:20px;color:#888;font-size:13px;">No advisees assigned.</div>';
+      } else {
+        for (const s of advisees) {
+          const evalsForStudent = USE_DEMO ? demoData.evaluations.filter(e => e.student_id === s.id) : [];
+          const submitted = evalsForStudent.filter(e => e.status === 'submitted').length;
+          const total = s.enrollments ? s.enrollments.length : '?';
+          const active = appState.selectedStudentId === s.id && appState.view === 'advisor-student' ? ' active' : '';
+          html += `<div class="sidebar-item${active}" onclick="navToAdvisee('${s.id}')">
+            <div class="si-title">${s.full_name}</div>
+            <div class="si-subtitle">${s.n_number} · ${s.year_level}</div>
+            <span class="si-badge ${submitted > 0 ? 'badge-partial' : 'badge-pending'}">${submitted}/${total} evals</span>
+          </div>`;
+        }
+      }
+    } catch(e) {
+      html += '<div style="padding:12px;color:#c00;font-size:12px;">Error loading advisees.</div>';
+    }
+  }
+
+  if (canViewAll) {
+    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="NCF Shield RGB_no color copy.png" alt="">Administration</div>';
+    const regActive = appState.view === 'registrar' ? ' active' : '';
+    const logActive = appState.view === 'access-log' ? ' active' : '';
+    html += `<div class="sidebar-item${regActive}" onclick="navToRegistrar()">
+      <div class="si-title">All Evaluations</div>
+      <div class="si-subtitle">View, search, and export</div>
+    </div>
+    <div class="sidebar-item${logActive}" onclick="navToAccessLog()">
+      <div class="si-title">FERPA Access Log</div>
+      <div class="si-subtitle">Audit trail</div>
+    </div>`;
+  }
+
+  sb.innerHTML = html;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 8: NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+
+function navToCourse(courseId) {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.selectedCourseId = courseId;
+  appState.selectedStudentId = null;
+  appState.view = 'course';
+  renderSidebar();
+  renderMain();
+}
+
+function navToAdvisee(studentId) {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.selectedStudentId = studentId;
+  appState.view = 'advisor-student';
+  renderSidebar();
+  renderMain();
+}
+
+function navToRegistrar() {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.view = 'registrar';
+  renderSidebar();
+  renderMain();
+}
+
+function navToAccessLog() {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.view = 'access-log';
+  renderSidebar();
+  renderMain();
+}
+
+function navToStudentHome() {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.view = 'student-home';
+  renderSidebar();
+  renderMain();
+}
+
+function openEvaluation(studentId, courseId) {
+  if (!warnIfDirty()) return;
+  destroyEditors();
+  appState.selectedStudentId = studentId;
+  appState.selectedCourseId = courseId;
+  appState.isAmending = false;
+  appState.view = 'evaluation';
+  renderMain();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 9: MAIN CONTENT ROUTER
+// ═══════════════════════════════════════════════════════════════════
+
+function renderMain() {
+  const mc = document.getElementById('mainContent');
+  switch (appState.view) {
+    case 'course':          renderCourseView(mc); break;
+    case 'evaluation':      renderEvaluationForm(mc); break;
+    case 'advisor-student': renderAdvisorStudentView(mc); break;
+    case 'registrar':       renderRegistrarView(mc); break;
+    case 'access-log':      renderAccessLogView(mc); break;
+    case 'student-home':    renderStudentView(mc); break;
+    default:
+      const u = appState.currentUser;
+      if (u?.role === 'student') { renderStudentView(mc); break; }
+      mc.innerHTML = `<div class="welcome">
+        <h2>Welcome, ${u?.full_name?.split(' ')[0] || ''}.</h2>
+        <p>${u?.role === 'faculty' ? 'Select a course or advisee from the sidebar.' :
+             (u?.role === 'registrar' || u?.role === 'po_office') ? 'Use the sidebar to view evaluations or the access log.' :
+             'Select an item from the sidebar.'}</p>
+      </div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 10: COURSE VIEW (student list)
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderCourseView(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+  const course = USE_DEMO ? demoData.courses.find(c => c.id === appState.selectedCourseId) : null;
+  if (!course && USE_DEMO) { mc.innerHTML = '<div class="loading">Course not found.</div>'; return; }
+
+  try {
+    const students = await Data.getCourseStudents(appState.selectedCourseId);
+    const c = USE_DEMO ? course : { code: appState.selectedCourseId }; // simplified for non-demo
+
+    let rows = '';
+    for (const s of students) {
+      const ev = USE_DEMO ? demoData.evaluations.find(e => e.student_id === s.id && e.course_id === appState.selectedCourseId) : null;
+      let statusBadge = '<span class="status-badge status-not-started">Not Started</span>';
+      let desigBadge = '&mdash;';
+      if (ev) {
+        statusBadge = ev.status === 'submitted'
+          ? '<span class="status-badge status-submitted">Submitted</span>'
+          : '<span class="status-badge status-draft">Draft</span>';
+        desigBadge = getDesignationBadge(ev.designation);
+      }
+      rows += `<tr>
+        <td class="clickable" onclick="openEvaluation('${s.id}','${appState.selectedCourseId}')">${s.full_name}</td>
+        <td>${s.n_number}</td>
+        <td>${s.year_level}</td>
+        <td>${s.advisor ? s.advisor.full_name : (USE_DEMO ? (demoData.profiles.find(p=>p.id===s.advisor_id)?.full_name||'—') : '—')}</td>
+        <td>${desigBadge}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    }
+
+    const courseObj = USE_DEMO ? course : { code: '', name: '', description: '', semester: '', year: '', faculty_id: '' };
+    const facultyName = USE_DEMO ? (demoData.profiles.find(p => p.id === courseObj.faculty_id)?.full_name || '') : '';
+
+    mc.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <span>${courseObj.code}: ${courseObj.name}</span>
+          <span style="font-weight:400;font-size:13px;color:#888;">${courseObj.semester} ${courseObj.year} · ${facultyName}</span>
+        </div>
+        <div class="card-body">
+          <div class="course-desc-box"><strong>Course Description:</strong> ${courseObj.description}</div>
+          <table class="student-table">
+            <thead><tr>
+              <th>Student</th><th>N-Number</th><th>Year</th><th>Advisor</th><th>Designation</th><th>Status</th>
+            </tr></thead>
+            <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">No students enrolled.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>`;
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error loading students: ${e.message}</div></div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 11: EVALUATION FORM
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderEvaluationForm(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+
+  const student = USE_DEMO ? demoData.students.find(s => s.id === appState.selectedStudentId) : { id: appState.selectedStudentId };
+  const course  = USE_DEMO ? demoData.courses.find(c => c.id === appState.selectedCourseId)   : { id: appState.selectedCourseId };
+  if (!student || !course) { mc.innerHTML = '<div class="loading">Record not found.</div>'; return; }
+
+  try {
+    const ev = await Data.getEvaluation(appState.selectedStudentId, appState.selectedCourseId);
+    appState.currentEvalId     = ev?.id || null;
+    appState.currentEvalStatus = ev?.status || 'draft';
+
+    const isSubmitted = appState.currentEvalStatus === 'submitted' && !appState.isAmending;
+    // PO Office (and, defensively, students) can read but never edit an evaluation.
+    const isReadOnlyViewer = appState.currentUser?.role === 'po_office' || appState.currentUser?.role === 'student';
+    // "locked" = no editing for any reason (submitted, or a read-only viewer).
+    const locked = isSubmitted || isReadOnlyViewer;
+    const facultyId   = USE_DEMO ? appState.currentUser?.id : null;
+    const facultyName = USE_DEMO ? (demoData.profiles.find(p => p.id === (course.faculty_id || facultyId))?.full_name || '—') : '—';
+    const advisorName = USE_DEMO ? (demoData.profiles.find(p => p.id === student.advisor_id)?.full_name || '—') : '—';
+
+    const designation     = ev?.designation || '';
+    const publicNarr      = ev?.public_narrative || '';
+    let   privateNarr     = '';
+
+    // Only faculty who wrote it, or registrar/admin/po_office, see private notes
+    const role = appState.currentUser?.role;
+    const canSeePrivate = role === 'registrar' || role === 'admin' || role === 'po_office'
+      || (ev && ev.faculty_id === appState.currentUser?.id)
+      || (!ev && (course.faculty_id === appState.currentUser?.id || !USE_DEMO));
+
+    if (canSeePrivate && ev?.id) {
+      privateNarr = await Data.getPrivateNote(ev.id);
+    }
+
+    // Log access
+    Data.logAccess('view_evaluation', 'evaluation', ev?.id, student.id);
+
+    const amendBanner = appState.isAmending ? `
+      <div class="amendment-banner">
+        ⚠ <span><strong>Amendment Mode.</strong> You are amending a submitted evaluation. The original will be archived. Submit when ready.</span>
+      </div>` : '';
+
+    const lockNotice = isSubmitted ? `
+      <div class="lock-notice">
+        ✓ <strong>Submitted</strong> on ${new Date(ev.submitted_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}.
+        This evaluation is locked. Contact the Registrar to amend a submitted evaluation.
+      </div>` : '';
+
+    const viewerNotice = (isReadOnlyViewer && !isSubmitted) ? `
+      <div class="lock-notice">This evaluation is shown in read-only mode.</div>` : '';
+
+    mc.innerHTML = `
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-outline btn-sm" onclick="navToCourse('${course.id}')">← Back to ${course.code}</button>
+      </div>
+      ${amendBanner}
+      <div class="card">
+        <div class="card-header">
+          <span>Narrative Evaluation</span>
+          ${isSubmitted
+            ? '<span class="status-badge status-submitted">Submitted</span>'
+            : ev ? '<span class="status-badge status-draft">Draft</span>'
+                 : '<span class="status-badge status-not-started">New</span>'}
+        </div>
+        <div class="card-body">
+          ${lockNotice}${viewerNotice}
+
+          <div class="eval-header-grid">
+            <div class="eval-field"><label>Student</label><div class="field-value">${student.full_name}</div></div>
+            <div class="eval-field"><label>N-Number</label><div class="field-value">${student.n_number}</div></div>
+            <div class="eval-field"><label>Course</label><div class="field-value">${course.code}: ${course.name}</div></div>
+            <div class="eval-field"><label>Faculty</label><div class="field-value">${facultyName}</div></div>
+            <div class="eval-field"><label>Semester / Year</label><div class="field-value">${course.semester} ${course.year}</div></div>
+            <div class="eval-field"><label>Faculty Advisor</label><div class="field-value">${advisorName}</div></div>
+            <div class="eval-field"><label>Student Year</label><div class="field-value">${student.year_level}</div></div>
+            <div class="eval-field">
+              <label>Course Designation</label>
+              <select class="designation-select" id="designationSelect" ${locked ? 'disabled' : ''}>
+                <option value="">— Select Designation —</option>
+                <option value="sat_plus"    ${designation==='sat_plus'    ? 'selected':''}>Strong Satisfactory (Sat+ / A)</option>
+                <option value="sat"         ${designation==='sat'         ? 'selected':''}>Satisfactory (Sat / B)</option>
+                <option value="sat_minus"   ${designation==='sat_minus'   ? 'selected':''}>Marginal Satisfactory (Sat- / C)</option>
+                <option value="unsat"       ${designation==='unsat'       ? 'selected':''}>Unsatisfactory (Unsat / F)</option>
+                <option value="incomplete"  ${designation==='incomplete'  ? 'selected':''}>Incomplete (I)</option>
+                <option value="pass"        ${designation==='pass'        ? 'selected':''}>Pass (P)</option>
+                <option value="fnc"         ${designation==='fnc'         ? 'selected':''}>Fail / No Credit (FNC)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="course-desc-box"><strong>Course Description:</strong> ${course.description}</div>
+
+          <div class="rte-label">Public Narrative Evaluation</div>
+          <div class="public-notice">This evaluation becomes part of the student's official academic record.</div>
+          <div class="rte-wrapper${locked ? ' readonly' : ''}" id="publicEditorWrapper">
+            <div id="publicEditorContainer"></div>
+          </div>
+
+          ${canSeePrivate ? `
+          <div class="rte-label private-label">Private / Internal Notes</div>
+          <div class="private-notice">Faculty-only. Not shared with students, not part of the public record. Visible to Registrar, PO Office, and Admin.</div>
+          <div class="rte-wrapper${locked ? ' readonly' : ''}" id="privateEditorWrapper">
+            <div id="privateEditorContainer"></div>
+          </div>` : ''}
+
+          <div class="btn-group">
+            ${locked
+              ? `<button class="btn btn-outline" onclick="printEvaluation()">Print / PDF</button>`
+              : `<button class="btn btn-secondary" onclick="performSave('draft', true)">Save Draft</button>
+                 <button class="btn btn-success" onclick="confirmSubmit()">Submit Evaluation</button>
+                 <button class="btn btn-outline" onclick="printEvaluation()">Print / PDF</button>`
+            }
+          </div>
+        </div>
+      </div>`;
+
+    // Initialize Quill editors after DOM is ready
+    setTimeout(() => {
+      const toolbarOptions = [
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'size': ['small', false, 'large', 'huge'] }],
+        ['clean']
+      ];
+
+      _publicQuill = new Quill('#publicEditorContainer', {
+        theme: 'snow',
+        readOnly: locked,
+        placeholder: 'Write the public narrative evaluation here…',
+        modules: { toolbar: locked ? false : toolbarOptions }
+      });
+      _publicQuill.root.innerHTML = publicNarr;
+
+      if (canSeePrivate) {
+        _privateQuill = new Quill('#privateEditorContainer', {
+          theme: 'snow',
+          readOnly: locked,
+          placeholder: 'Internal notes (not shared with student)…',
+          modules: { toolbar: locked ? false : toolbarOptions }
+        });
+        _privateQuill.root.innerHTML = privateNarr;
+      }
+
+      // Attach change listeners AFTER a tick so Quill's mutation observer
+      // doesn't fire markDirty for the initial content load.
+      if (!locked) {
+        setTimeout(() => {
+          _publicQuill.on('text-change', markDirty);
+          if (_privateQuill) _privateQuill.on('text-change', markDirty);
+          _isDirty = false;
+          setSaveStatus('', '');
+        }, 150);
+      }
+
+      if (!locked) {
+        document.getElementById('designationSelect')?.addEventListener('change', markDirty);
+      }
+    }, 50);
+
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error loading evaluation: ${e.message}</div></div>`;
+  }
+}
+
+async function performSave(status, showMsg) {
+  if (!_publicQuill) return;
+  const designation    = document.getElementById('designationSelect')?.value || '';
+  const publicNarr     = _publicQuill.root.innerHTML;
+  const privateNarr    = _privateQuill ? _privateQuill.root.innerHTML : undefined;
+
+  if (status === 'submitted' && !designation) {
+    showToast('Please select a course designation before submitting.', '#dc3545');
+    return;
+  }
+
+  const saved = await Data.saveEvaluation(
+    appState.selectedStudentId,
+    appState.selectedCourseId,
+    { designation, publicNarrative: publicNarr, privateNarrative: privateNarr, status },
+    appState.currentUser?.id
+  );
+
+  appState.currentEvalId     = saved.id;
+  appState.currentEvalStatus = saved.status;
+  _isDirty = false;
+  clearTimeout(_autoSaveTimer);
+
+  if (showMsg) {
+    const msg = status === 'submitted' ? 'Evaluation submitted.' : 'Draft saved.';
+    showToast(msg, status === 'submitted' ? '#28a745' : '#6c757d');
+    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSaveStatus('saved', `✓ Saved ${t}`);
+  }
+
+  if (status === 'submitted') {
+    appState.isAmending = false;
+    renderSidebar();
+    // Re-render form in locked state
+    setTimeout(() => renderEvaluationForm(document.getElementById('mainContent')), 300);
+  } else {
+    renderSidebar();
+  }
+}
+
+function confirmSubmit() {
+  const designation = document.getElementById('designationSelect')?.value;
+  if (!designation) { showToast('Please select a course designation before submitting.', '#dc3545'); return; }
+  if (confirm('Submit this evaluation? It will be locked after submission. You can contact the Registrar to request an amendment.')) {
+    performSave('submitted', true);
+  }
+}
+
+function printEvaluation() {
+  window.print();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 12: ADVISOR VIEW
+// Advisors see only public narratives — private notes are never fetched.
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderAdvisorStudentView(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+  const student = USE_DEMO ? demoData.students.find(s => s.id === appState.selectedStudentId) : null;
+  if (!student && USE_DEMO) { mc.innerHTML = '<div class="loading">Student not found.</div>'; return; }
+
+  Data.logAccess('view_student_record', 'student', appState.selectedStudentId, appState.selectedStudentId);
+
+  try {
+    const enrollmentIds = USE_DEMO ? student.enrollments : [];
+    let coursesHtml = '';
+
+    for (const courseId of enrollmentIds) {
+      const course   = USE_DEMO ? demoData.courses.find(c => c.id === courseId) : null;
+      const faculty  = USE_DEMO ? demoData.profiles.find(p => p.id === course?.faculty_id) : null;
+      const ev       = USE_DEMO ? demoData.evaluations.find(e => e.student_id === student.id && e.course_id === courseId) : null;
+
+      let evalContent = '';
+      if (ev && ev.status === 'submitted') {
+        evalContent = `
+          <div style="margin-top:12px;">
+            <div style="margin-bottom:8px;">
+              <strong>Designation:</strong> ${getDesignationBadge(ev.designation)}
+              &nbsp;&nbsp;
+              <strong>Submitted:</strong> <span style="color:#555;font-size:13px;">${new Date(ev.submitted_at).toLocaleDateString()}</span>
+            </div>
+            <div class="rte-label">Public Narrative</div>
+            <div class="rte-wrapper readonly" style="margin-top:6px;">
+              <div style="padding:14px;font-size:14px;line-height:1.6;">${ev.public_narrative}</div>
+            </div>
+          </div>`;
+      } else if (ev && ev.status === 'draft') {
+        evalContent = '<div style="padding:12px;color:#856404;font-style:italic;background:#fff8e1;border-radius:6px;margin-top:8px;">Evaluation in progress — not yet submitted.</div>';
+      } else {
+        evalContent = '<div style="padding:12px;color:#888;font-style:italic;">No evaluation submitted yet.</div>';
+      }
+
+      coursesHtml += `
+        <div class="card">
+          <div class="card-header">
+            <span>${course?.code}: ${course?.name}</span>
+            <span style="font-weight:400;font-size:13px;color:#888;">${course?.semester} ${course?.year} · ${faculty?.full_name || ''}</span>
+          </div>
+          <div class="card-body">
+            <div class="course-desc-box"><strong>Course Description:</strong> ${course?.description || ''}</div>
+            ${evalContent}
+          </div>
+        </div>`;
+    }
+
+    const advisorName = USE_DEMO ? (demoData.profiles.find(p => p.id === student.advisor_id)?.full_name || '—') : '—';
+
+    mc.innerHTML = `
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <h3 style="margin-bottom:4px;">${student.full_name}</h3>
+          <div style="color:#666;font-size:14px;">${student.n_number} · ${student.year_level}</div>
+          <div style="color:#888;font-size:13px;margin-top:2px;">Advisor: ${advisorName}</div>
+        </div>
+      </div>
+      ${coursesHtml || '<div class="card"><div class="card-body" style="color:#888;">No course enrollments found.</div></div>'}`;
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error: ${e.message}</div></div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 12B: STUDENT VIEW
+// Students see ONLY their own submitted evaluations (designation + public
+// narrative), grouped by semester (current and previous). Private/internal
+// notes are never fetched — the data layer and RLS both enforce this.
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderStudentView(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading your evaluations…</div>';
+  const u = appState.currentUser;
+  try {
+    const items = await Data.getStudentCoursesWithEvals(u.student_id);
+    Data.logAccess('view_student_record', 'student', u.student_id, u.student_id);
+
+    if (items.length === 0) {
+      mc.innerHTML = '<div class="card"><div class="card-body" style="color:#888;">No course enrollments found for your account.</div></div>';
+      return;
+    }
+
+    // Group by semester, most recent first
+    const groups = {};
+    for (const it of items) {
+      const key = `${it.course.semester} ${it.course.year}`;
+      (groups[key] = groups[key] || []).push(it);
+    }
+
+    let html = `
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <h3 style="margin-bottom:4px;">My Narrative Evaluations</h3>
+          <div style="color:#666;font-size:14px;">${u.full_name}</div>
+          <div style="color:#888;font-size:13px;margin-top:2px;">Only submitted evaluations are shown. Faculty internal notes are never included.</div>
+        </div>
+      </div>`;
+
+    for (const key of Object.keys(groups).sort(semesterSortDesc)) {
+      html += `<div class="rte-label" style="margin:18px 0 8px;font-size:15px;">${key}</div>`;
+      for (const { course, faculty, ev } of groups[key]) {
+        const body = ev ? `
+            <div style="margin-bottom:8px;">
+              <strong>Designation:</strong> ${getDesignationBadge(ev.designation)}
+              &nbsp;&nbsp;
+              <strong>Submitted:</strong> <span style="color:#555;font-size:13px;">${new Date(ev.submitted_at).toLocaleDateString()}</span>
+            </div>
+            <div class="rte-label">Narrative Evaluation</div>
+            <div class="rte-wrapper readonly" style="margin-top:6px;">
+              <div style="padding:14px;font-size:14px;line-height:1.6;">${ev.public_narrative}</div>
+            </div>`
+          : '<div style="padding:12px;color:#888;font-style:italic;">No evaluation available yet for this course.</div>';
+        html += `
+          <div class="card">
+            <div class="card-header">
+              <span>${course.code}: ${course.name}</span>
+              <span style="font-weight:400;font-size:13px;color:#888;">${course.semester} ${course.year} · ${faculty?.full_name || ''}</span>
+            </div>
+            <div class="card-body">
+              <div class="course-desc-box"><strong>Course Description:</strong> ${course.description || ''}</div>
+              ${body}
+            </div>
+          </div>`;
+      }
+    }
+    mc.innerHTML = html;
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error loading your evaluations: ${e.message}</div></div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 13: REGISTRAR VIEW
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderRegistrarView(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading all evaluations…</div>';
+
+  try {
+    const allEvals = await Data.getAllEvaluations(null, null);
+
+    // Build semester options from available data
+    const semesters = [...new Set(allEvals.map(e => {
+      const c = USE_DEMO ? demoData.courses.find(cc => cc.id === e.course_id) : e.course;
+      return c ? `${c.semester} ${c.year}` : null;
+    }).filter(Boolean))].sort().reverse();
+
+    const submitted = allEvals.filter(e => e.status === 'submitted').length;
+    const drafts    = allEvals.filter(e => e.status === 'draft').length;
+    const total     = allEvals.length;
+    const uniqueStudents = new Set(allEvals.map(e => e.student_id)).size;
+
+    mc.innerHTML = `
+      <div class="card">
+        <div class="card-header">All Narrative Evaluations</div>
+        <div class="card-body">
+
+          <div class="stats-row">
+            <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Total Evaluations</div></div>
+            <div class="stat-card"><div class="stat-number">${submitted}</div><div class="stat-label">Submitted</div></div>
+            <div class="stat-card"><div class="stat-number">${drafts}</div><div class="stat-label">In Draft</div></div>
+            <div class="stat-card"><div class="stat-number">${uniqueStudents}</div><div class="stat-label">Students with Evals</div></div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label>Semester</label>
+              <select class="filter-select" id="semFilter" onchange="applyRegistrarFilters()">
+                <option value="">All Semesters</option>
+                ${semesters.map(s => `<option value="${s}">${s}</option>`).join('')}
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Status</label>
+              <select class="filter-select" id="statusFilter" onchange="applyRegistrarFilters()">
+                <option value="">All</option>
+                <option value="submitted">Submitted</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Search</label>
+              <input type="text" class="filter-select" id="regSearch" placeholder="Name or N-Number…" oninput="applyRegistrarFilters()" style="width:200px;">
+            </div>
+            <div class="filter-group" style="justify-content:flex-end;">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary btn-sm" onclick="exportCSV()">Export CSV</button>
+            </div>
+          </div>
+
+          <div id="regTableContainer"></div>
+        </div>
+      </div>`;
+
+    window._allEvalsCache = allEvals;
+    applyRegistrarFilters();
+
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error loading evaluations: ${e.message}</div></div>`;
+  }
+}
+
+function applyRegistrarFilters() {
+  const semVal    = document.getElementById('semFilter')?.value   || '';
+  const statusVal = document.getElementById('statusFilter')?.value || '';
+  const searchVal = (document.getElementById('regSearch')?.value  || '').toLowerCase().trim();
+  const container = document.getElementById('regTableContainer');
+  if (!container || !window._allEvalsCache) return;
+
+  let rows = window._allEvalsCache;
+
+  if (semVal) rows = rows.filter(e => {
+    const c = USE_DEMO ? demoData.courses.find(cc => cc.id === e.course_id) : e.course;
+    return c ? `${c.semester} ${c.year}` === semVal : false;
+  });
+  if (statusVal) rows = rows.filter(e => e.status === statusVal);
+  if (searchVal) rows = rows.filter(e => {
+    const s = USE_DEMO ? demoData.students.find(ss => ss.id === e.student_id) : e.student;
+    return s ? (s.full_name.toLowerCase().includes(searchVal) || s.n_number.toLowerCase().includes(searchVal)) : false;
+  });
+
+  if (rows.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">No evaluations match the selected filters.</div>';
+    return;
+  }
+
+  let tableRows = '';
+  for (const e of rows) {
+    const s  = USE_DEMO ? demoData.students.find(ss => ss.id === e.student_id) : e.student;
+    const c  = USE_DEMO ? demoData.courses.find(cc => cc.id === e.course_id)   : e.course;
+    const fac = USE_DEMO ? demoData.profiles.find(p => p.id === e.faculty_id)  : e.faculty;
+    const updated = e.updated_at ? new Date(e.updated_at).toLocaleDateString() : '—';
+    tableRows += `<tr>
+      <td>${s?.full_name || '—'}</td>
+      <td>${s?.n_number || '—'}</td>
+      <td>${s?.year_level || '—'}</td>
+      <td>${c ? `${c.code}: ${c.name}` : '—'}</td>
+      <td>${c ? `${c.semester} ${c.year}` : '—'}</td>
+      <td>${fac?.full_name || '—'}</td>
+      <td>${getDesignationBadge(e.designation)}</td>
+      <td>${e.status === 'submitted'
+        ? '<span class="status-badge status-submitted">Submitted</span>'
+        : '<span class="status-badge status-draft">Draft</span>'}</td>
+      <td>${updated}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="openFullEvalRegistrar('${e.student_id}','${e.course_id}')">View</button></td>
+    </tr>`;
+  }
+
+  container.innerHTML = `
+    <table class="student-table">
+      <thead><tr>
+        <th>Student</th><th>N-Number</th><th>Year</th><th>Course</th><th>Semester</th>
+        <th>Faculty</th><th>Designation</th><th>Status</th><th>Last Updated</th><th></th>
+      </tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <div style="font-size:12px;color:#888;margin-top:10px;">${rows.length} record${rows.length !== 1 ? 's' : ''} shown</div>`;
+}
+
+function openFullEvalRegistrar(studentId, courseId) {
+  destroyEditors();
+  appState.selectedStudentId = studentId;
+  appState.selectedCourseId  = courseId;
+  appState.view = 'evaluation';
+  renderMain();
+}
+
+function exportCSV() {
+  const rows = window._allEvalsCache || [];
+  const headers = ['Student Name','N-Number','Year','Course Code','Course Name','Semester','Year','Faculty','Designation','Status','Submitted Date','Last Updated'];
+  const csvRows = [headers.join(',')];
+  for (const e of rows) {
+    const s   = USE_DEMO ? demoData.students.find(ss => ss.id === e.student_id) : e.student;
+    const c   = USE_DEMO ? demoData.courses.find(cc => cc.id === e.course_id)   : e.course;
+    const fac = USE_DEMO ? demoData.profiles.find(p => p.id === e.faculty_id)   : e.faculty;
+    const row = [
+      `"${s?.full_name||''}"`,
+      s?.n_number||'',
+      `"${s?.year_level||''}"`,
+      c?.code||'',
+      `"${c?.name||''}"`,
+      c?.semester||'',
+      c?.year||'',
+      `"${fac?.full_name||''}"`,
+      e.designation||'',
+      e.status||'',
+      e.submitted_at ? new Date(e.submitted_at).toLocaleDateString() : '',
+      e.updated_at   ? new Date(e.updated_at).toLocaleDateString()   : '',
+    ];
+    csvRows.push(row.join(','));
+  }
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `ncf_evaluations_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 14: FERPA ACCESS LOG VIEW
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderAccessLogView(mc) {
+  mc.innerHTML = '<div class="loading"><div class="spinner"></div>Loading access log…</div>';
+  try {
+    const log = await Data.getAccessLog(null);
+    if (log.length === 0) {
+      mc.innerHTML = '<div class="card"><div class="card-body" style="color:#888;">No access events recorded yet.</div></div>';
+      return;
+    }
+    let rows = '';
+    for (const entry of log.slice(0, 200)) {
+      const user    = USE_DEMO ? demoData.profiles.find(p => p.id === entry.user_id)    : entry.user;
+      const student = USE_DEMO ? demoData.students.find(s => s.id === entry.student_id) : entry.student;
+      rows += `<tr>
+        <td>${new Date(entry.created_at).toLocaleString()}</td>
+        <td>${user?.full_name || entry.user_id || '—'}</td>
+        <td>${student ? `${student.full_name} (${student.n_number})` : '—'}</td>
+        <td>${entry.action}</td>
+        <td>${entry.resource_type || '—'}</td>
+      </tr>`;
+    }
+    mc.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          FERPA Access Log
+          <span style="font-size:13px;font-weight:400;color:#888;">Last ${Math.min(log.length,200)} events</span>
+        </div>
+        <div class="card-body" style="overflow-x:auto;">
+          <table class="log-table">
+            <thead><tr><th>Timestamp</th><th>User</th><th>Student</th><th>Action</th><th>Resource</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  } catch(e) {
+    mc.innerHTML = `<div class="card"><div class="card-body" style="color:#c00;">Error loading log: ${e.message}</div></div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 15: SEARCH
+// ═══════════════════════════════════════════════════════════════════
+
+function setupSearch() {
+  const input   = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+  if (!input) return;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (q.length < 2) { results.classList.remove('active'); return; }
+
+    const students = USE_DEMO ? demoData.students : [];
+    const matches  = students.filter(s =>
+      s.full_name.toLowerCase().includes(q) || s.n_number.toLowerCase().includes(q)
+    );
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="search-result-item" style="color:#888;">No students found</div>';
+      results.classList.add('active');
+      return;
+    }
+
+    results.innerHTML = matches.map(s => {
+      const advisor   = USE_DEMO ? demoData.profiles.find(p => p.id === s.advisor_id) : null;
+      const courses   = (s.enrollments || []).map(cid => {
+        const c = USE_DEMO ? demoData.courses.find(cc => cc.id === cid) : null;
+        return c?.code || '';
+      }).join(', ');
+      return `<div class="search-result-item" onclick="searchSelect('${s.id}')">
+        <div class="sr-name">${s.full_name}</div>
+        <div class="sr-nnum">${s.n_number} · ${s.year_level} · Advisor: ${advisor?.full_name || '—'}</div>
+        <div class="sr-course">${courses}</div>
+      </div>`;
+    }).join('');
+    results.classList.add('active');
+  });
+
+  input.addEventListener('blur',  () => setTimeout(() => results.classList.remove('active'), 200));
+  input.addEventListener('focus', () => { if (input.value.trim().length >= 2) input.dispatchEvent(new Event('input')); });
+}
+
+function searchSelect(studentId) {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').classList.remove('active');
+
+  const u = appState.currentUser;
+  if (u?.role === 'registrar' || u?.role === 'admin' || u?.role === 'po_office') {
+    // Registrar / PO Office: go to first evaluation for this student
+    const ev = USE_DEMO ? demoData.evaluations.find(e => e.student_id === studentId) : null;
+    if (ev) { openFullEvalRegistrar(studentId, ev.course_id); return; }
+  }
+  if (u?.is_advisor) {
+    const student = USE_DEMO ? demoData.students.find(s => s.id === studentId) : null;
+    if (student?.advisor_id === u.id) { navToAdvisee(studentId); return; }
+  }
+  if (u?.role === 'faculty') {
+    const myCourses = USE_DEMO ? demoData.courses.filter(c => c.faculty_id === u.id) : [];
+    const student   = USE_DEMO ? demoData.students.find(s => s.id === studentId) : null;
+    for (const c of myCourses) {
+      if (student?.enrollments?.includes(c.id)) { openEvaluation(studentId, c.id); return; }
+    }
+  }
+  // Fallback
+  navToAdvisee(studentId);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 16: HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+function roleLabel(role) {
+  return ({ faculty: 'Faculty', registrar: 'Registrar', admin: 'Admin', po_office: 'PO Office', student: 'Student' })[role] || role;
+}
+
+// Chronological sort key for a semester ("Spring 2026" → 20261). Higher = more recent.
+function semesterKey(term, year) { return year * 10 + ({ Spring: 1, Summer: 2, Fall: 3 }[term] || 0); }
+function semesterSortDesc(a, b) {
+  const pa = a.split(' '), pb = b.split(' ');
+  return semesterKey(pb[0], +pb[1]) - semesterKey(pa[0], +pa[1]);
+}
+
+function getDesignationBadge(d) {
+  const map = {
+    sat_plus:   ['Sat+',  'desig-satplus'],
+    sat:        ['Sat',   'desig-sat'],
+    sat_minus:  ['Sat−',  'desig-satminus'],
+    unsat:      ['Unsat', 'desig-unsat'],
+    incomplete: ['INC',   'desig-inc'],
+    pass:       ['P',     'desig-pass'],
+    fnc:        ['FNC',   'desig-fnc'],
+  };
+  const [label, cls] = map[d] || ['—', ''];
+  return cls ? `<span class="desig-badge ${cls}">${label}</span>` : label;
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#28a745';
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Dev utility — resets demo data to initial state
+function resetDemoData() {
+  localStorage.removeItem('ncf_eval_v3');
+  localStorage.removeItem('ncf_demo_user');
+  location.reload();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 17: INIT
+// ═══════════════════════════════════════════════════════════════════
+
+Auth.init();
+</script>
+</body>
+</html>
