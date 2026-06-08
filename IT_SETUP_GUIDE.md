@@ -260,26 +260,25 @@ values (
 
 ## Step 8: Deploy the App to Your Web Server
 
-The application is a single HTML file plus three image files (NCF logos).
+The application is a single HTML file plus an `assets/` folder with three image
+files (NCF logos).
 
 ### Files to deploy:
 ```
 index.html
-NCF Logo Horiz BLACK REV copy.png
-NCF Logo Horiz BLACK copy.jpg
-NCF Shield RGB_no color copy.png
+assets/NCF Logo Horiz BLACK REV copy.png
+assets/NCF Logo Horiz BLACK copy.jpg
+assets/NCF Shield RGB_no color copy.png
 ```
 
 ### Apache / Nginx
 
-Copy these four files to any directory served by your web server:
+Copy `index.html` and the `assets/` folder to any directory served by your web server:
 
 ```bash
 # Example: Apache
 cp index.html /var/www/html/evaluations/
-cp "NCF Logo Horiz BLACK REV copy.png" /var/www/html/evaluations/
-cp "NCF Logo Horiz BLACK copy.jpg" /var/www/html/evaluations/
-cp "NCF Shield RGB_no color copy.png" /var/www/html/evaluations/
+cp -r assets/ /var/www/html/evaluations/
 ```
 
 The app will be accessible at `https://yourdomain.ncf.edu/evaluations/`.

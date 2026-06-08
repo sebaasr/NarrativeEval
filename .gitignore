@@ -7,3 +7,7 @@ desktop.ini
 # Local env / secrets (never commit Supabase keys)
 .env
 .env.local
+
+# Internal reference material — kept locally, not published to the public repo/site
+*.pdf
+*.docx

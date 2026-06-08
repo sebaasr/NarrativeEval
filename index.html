@@ -314,7 +314,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 ═══════════════════════════════════════════════════════════ -->
 <div id="loginScreen" class="login-screen" style="display:none;">
   <div class="login-card">
-    <img src="NCF Logo Horiz BLACK copy.jpg" alt="New College of Florida" class="login-logo">
+    <img src="assets/NCF Logo Horiz BLACK copy.jpg" alt="New College of Florida" class="login-logo">
     <div class="login-title">Narrative Evaluations</div>
     <div class="login-subtitle">Sign in with your NCF credentials</div>
 
@@ -353,7 +353,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">
-        <img src="NCF Logo Horiz BLACK REV copy.png" alt="New College of Florida">
+        <img src="assets/NCF Logo Horiz BLACK REV copy.png" alt="New College of Florida">
         <div class="logo-divider"></div>
         <span class="logo-text">Narrative Evaluations</span>
       </div>
@@ -963,7 +963,7 @@ async function renderSidebar() {
 
   // ── Student: read-only view of their own evaluations, grouped by semester ──
   if (u.role === 'student') {
-    html += '<div class="sidebar-header"><img src="NCF Shield RGB_no color copy.png" alt="">My Evaluations</div>';
+    html += '<div class="sidebar-header"><img src="assets/NCF Shield RGB_no color copy.png" alt="">My Evaluations</div>';
     try {
       const items = await Data.getStudentCoursesWithEvals(u.student_id);
       if (items.length === 0) {
@@ -991,7 +991,7 @@ async function renderSidebar() {
   }
 
   if (u.role === 'faculty' || u.role === 'admin') {
-    html += '<div class="sidebar-header"><img src="NCF Shield RGB_no color copy.png" alt="">My Courses</div>';
+    html += '<div class="sidebar-header"><img src="assets/NCF Shield RGB_no color copy.png" alt="">My Courses</div>';
     try {
       const courses = await Data.getMyCourses(u.id);
       if (courses.length === 0) {
@@ -1023,7 +1023,7 @@ async function renderSidebar() {
   }
 
   if (u.is_advisor || u.role === 'admin') {
-    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="NCF Shield RGB_no color copy.png" alt="">My Advisees</div>';
+    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="assets/NCF Shield RGB_no color copy.png" alt="">My Advisees</div>';
     try {
       const advisees = await Data.getMyAdvisees(u.id);
       if (advisees.length === 0) {
@@ -1047,7 +1047,7 @@ async function renderSidebar() {
   }
 
   if (canViewAll) {
-    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="NCF Shield RGB_no color copy.png" alt="">Administration</div>';
+    html += '<div class="sidebar-header" style="margin-top:8px;"><img src="assets/NCF Shield RGB_no color copy.png" alt="">Administration</div>';
     const regActive = appState.view === 'registrar' ? ' active' : '';
     const logActive = appState.view === 'access-log' ? ' active' : '';
     html += `<div class="sidebar-item${regActive}" onclick="navToRegistrar()">
