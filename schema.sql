@@ -85,6 +85,7 @@ create table public.students (
   advisor_id  uuid references public.profiles(id),
   year_level  text,                    -- 'First Year', 'Second Year', etc.
   contracts_completed integer,         -- NCF contracts completed (shown alongside year)
+  aoc         text,                    -- Area of Concentration (student's major), for search/filter
   banner_id   text unique,             -- Banner PIDM for import matching
   is_active   boolean not null default true,
   created_at  timestamptz default now()
@@ -481,6 +482,7 @@ create table if not exists public.import_students_staging (
   advisor_email text,
   year_level text,
   contracts_completed text,
+  aoc        text,
   banner_id  text
 );
 
@@ -498,7 +500,7 @@ declare
   inserted_enrolls   int := 0;
 begin
   -- Upsert students
-  insert into public.students (n_number, full_name, email, advisor_id, year_level, contracts_completed, banner_id)
+  insert into public.students (n_number, full_name, email, advisor_id, year_level, contracts_completed, aoc, banner_id)
   select
     s.n_number,
     s.full_name,
@@ -506,6 +508,7 @@ begin
     p.id as advisor_id,
     s.year_level,
     nullif(s.contracts_completed, '')::int,
+    s.aoc,
     s.banner_id
   from public.import_students_staging s
   left join public.profiles p on lower(p.email) = lower(s.advisor_email)
@@ -515,6 +518,7 @@ begin
     advisor_id          = excluded.advisor_id,
     year_level          = excluded.year_level,
     contracts_completed = excluded.contracts_completed,
+    aoc                 = excluded.aoc,
     banner_id           = excluded.banner_id;
 
   get diagnostics inserted_students = row_count;
